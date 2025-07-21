@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ override: true });
 const express = require("express");
 const cors = require("cors");
 const app = express();
@@ -44,7 +44,7 @@ const server = app.listen(port, () => console.log(`Application Running on Port $
 createWebSocketServer(server); 
 app.use(express.static(path.join(__dirname, "..", "frontend", "dist")));
 
-app.get('/*', (req, res) => {
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'), (err) => {
         if (err) {
             console.error('Error sending file:', err);
