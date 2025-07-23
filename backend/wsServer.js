@@ -1,8 +1,6 @@
 const ws = require("ws");
 const jwt = require("jsonwebtoken");
-const fs = require("fs");
 const Message = require("./models/messageModel");
-const { clear } = require("console");
 const { User } = require("./models/userModel");
 
 const createWebSocketServer = (server) => {
@@ -10,21 +8,20 @@ const createWebSocketServer = (server) => {
 
   wss.on("connection", (connection, req) => {
     const notifyAboutOnlinePeople = async () => {
+      const onlineClients = Array.from(wss.clients);
+      
+      const authenticatedClients = onlineClients.filter(client => client.userId);
+
       const onlineUsers = await Promise.all(
-        Array.from(wss.clients).map(async (client) => {
+        authenticatedClients.map(async (client) => {
           const { userId, username } = client;
           const user = await User.findById(userId);
           const avatarLink = user ? user.avatarLink : null;
-
-          return {
-            userId,
-            username,
-            avatarLink,
-          };
+          return { userId, username, avatarLink };
         })
       );
-
-      [...wss.clients].forEach((client) => {
+      
+      onlineClients.forEach((client) => {
         client.send(
           JSON.stringify({
             online: onlineUsers,
@@ -34,15 +31,14 @@ const createWebSocketServer = (server) => {
     };
 
     connection.isAlive = true;
-
     connection.timer = setInterval(() => {
       connection.ping();
       connection.deathTimer = setTimeout(() => {
         connection.isAlive = false;
         clearInterval(connection.timer);
         connection.terminate();
-        notifyAboutOnlinePeople();
-        console.log("dead");
+        notifyAboutOnlinePeople(); 
+        console.log("Terminated a dead connection.");
       }, 1000);
     }, 5000);
 
@@ -51,20 +47,23 @@ const createWebSocketServer = (server) => {
     });
 
     const cookies = req.headers.cookie;
-
     if (cookies) {
       const tokenString = cookies
         .split(";")
-        .find((str) => str.startsWith("authToken="));
+        .find((str) => str.trim().startsWith("authToken="));
 
       if (tokenString) {
         const token = tokenString.split("=")[1];
         jwt.verify(token, process.env.JWTPRIVATEKEY, {}, (err, userData) => {
-          if (err) console.log(err);
-
-          const { _id, firstName, lastName } = userData;
-          connection.userId = _id;
-          connection.username = `${firstName} ${lastName}`;
+          if (err) {
+            console.error("JWT verification error:", err);
+            return; 
+          }
+          if (userData) {
+            const { _id, firstName, lastName } = userData;
+            connection.userId = _id;
+            connection.username = `${firstName} ${lastName}`;
+          }
         });
       }
     }
@@ -72,31 +71,30 @@ const createWebSocketServer = (server) => {
     connection.on("message", async (message) => {
       const messageData = JSON.parse(message.toString());
       const { recipient, text } = messageData;
-      const msgDoc = await Message.create({
-        sender: connection.userId,
-        recipient,
-        text,
-      });
 
-      if (recipient && text) {
-        [...wss.clients].forEach((client) => {
-          if (client.userId === recipient) {
+      if (recipient && text && connection.userId) {
+        const msgDoc = await Message.create({
+          sender: connection.userId,
+          recipient,
+          text,
+        });
+
+        [...wss.clients]
+          .filter((c) => c.userId === recipient)
+          .forEach((client) => {
             client.send(
               JSON.stringify({
-                sender: connection.username,
+                _id: msgDoc._id,
+                sender: connection.userId,
+                recipient,
                 text,
-                id: msgDoc._id,
               })
             );
-          }
-        });
+          });
       }
     });
-    notifyAboutOnlinePeople();
-    // Sending online user list to all clients
 
-    // Log online users to the console
-    console.log("Online Users:", onlineUsers);
+    notifyAboutOnlinePeople();
   });
 };
 

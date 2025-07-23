@@ -7,50 +7,48 @@ const crypto = require("crypto");
 const registerController = async (req, res) => {
   try {
     const { error } = validateRegister(req.body);
-
     if (error) {
       return res.status(400).send({ message: error.details[0].message });
     }
 
-    // Check if user with the given email already exists
     let user = await User.findOne({ email: req.body.email });
 
     if (user && user.verified) {
       return res
         .status(409)
-        .send({ message: "User with given email already exists" });
-    }
-    if (user && user.verificationLinkSent) {
-      return res
-        .status(400)
-        .send({
-          message: "A verification link has been already sent to this Email",
-        });
+        .send({ message: "User with this email already exists and is verified." });
     }
 
-    const salt = await bcrypt.genSalt(Number(process.env.SALT));
-    const hashPassword = await bcrypt.hash(req.body.password, salt);
-    // Save the user with hashed password
-    user = await new User({ ...req.body, password: hashPassword }).save();
+    if (!user) {
+      const salt = await bcrypt.genSalt(Number(process.env.SALT));
+      const hashPassword = await bcrypt.hash(req.body.password, salt);
+      user = await new User({ ...req.body, password: hashPassword }).save();
+    }
 
-    // Generate a verification token and send an email
-    const token = await new Token({
+    const existingToken = await Token.findOne({ userId: user._id });
+    if (existingToken) {
+      await existingToken.deleteOne();
+    }
+
+    const verificationToken = await new Token({
       userId: user._id,
-      token: crypto.randomBytes(16).toString("hex"),
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 3600000,
+      token: crypto.randomBytes(32).toString("hex"),
     }).save();
 
-    const url = `${process.env.BASE_URL}/users/${user._id}/verify/${token.token}`;
-    await sendEmail(user.email, "Verify Email", url);
-
+    const url = `${process.env.CLIENT_URL}/users/${user._id}/verify/${verificationToken.token}`;
+    
+    await sendEmail(user.email, "Verify Your Email", `Click this link to verify your email: ${url}`);
+    
     user.verificationLinkSent = true;
     await user.save();
-    res
-      .status(201)
-      .send({ message: `Verification Email Sent to ${user.email}` });
+
+    res.status(201).send({ message: `A new verification email has been sent to ${user.email}. Please check your inbox.` });
+
   } catch (error) {
     console.error("Error in registerController:", error);
+    if (error.command === 'CONN') {
+        return res.status(500).send({ message: "Failed to connect to email server. Please check your configuration." });
+    }
     res.status(500).send({ message: "Internal Server Error" });
   }
 };
