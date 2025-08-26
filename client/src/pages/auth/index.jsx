@@ -4,15 +4,78 @@ import Victory from '../../assets/victory.svg';
 import {Tabs,TabsContent,TabsList,TabsTrigger} from '../../components/ui/tabs'
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
-
+import { toast } from 'sonner';
+import {apiClient} from '../../lib/api-client';
+import { LOGIN_ROUTE, SIGNUP_ROUTE } from '../../utils/constants';
+import {useNavigate} from 'react-router-dom';
+import { useAppStore } from '../../store';
 
 const Auth = () => {
-  const handleLogin = () => {};
-  const handleSignup = () => {};
-
+  
+  const navigate= useNavigate();
+  const {setUserInfo}=useAppStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  const validateLogin = ()=>{
+
+    if(!email.length){
+    toast.error("email is required");
+    return false;
+    }
+    if(!password.length){
+    toast.error("password is required");
+    return false;
+    }
+    return true;
+     
+  }  
+  const validateSignup = ()=>{
+    if(!email.length){
+    toast.error("email is required");
+    return false;
+    }
+    if(!password.length){
+    toast.error("password is required");
+    return false;
+    }
+    if(password!==confirmPassword){
+    toast.error("Passwords do not match");
+    return false;
+    }
+    return true;
+  }
+  const handleLogin = async () => {
+    if(validateLogin()){
+      const res = await apiClient.post(LOGIN_ROUTE,{email,password},{withCredentials:true});
+
+      if(res.data.user.id){
+        setUserInfo(res.data.user);
+        if(res.data.user.profileSetup){
+          toast.success("Logged in successfully")
+          navigate('/chat');
+        }
+        else{
+          navigate('/profile');
+        }
+      }
+      console.log({res});
+    }
+  };
+
+  const handleSignup = async () => {
+    if(validateSignup()){
+      const res=await apiClient.post(SIGNUP_ROUTE,{email,password},{ withCredentials: true });
+
+      if(res.status===201){
+        setUserInfo(res.data.user);
+        toast.success("signup successfully")
+        navigate('/profile');
+      }
+      console.log({res});
+    }
+  };
 
   return (
     <div className='min-h-screen w-full flex items-center justify-center bg-gray-100 p-4'>
