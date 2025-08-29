@@ -350,7 +350,7 @@ const Profile = () => {
             <Avatar className="h-36 w-36 md:h-48 md:w-48 rounded-full overflow-hidden">
               {image ? (
                 <AvatarImage
-                  src={image}
+                  src={'image'}
                   alt="avatar"
                   className="h-full w-full object-cover"
                 />

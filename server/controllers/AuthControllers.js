@@ -274,7 +274,6 @@ export const getUserInfo = async (req, res, next) => {
     }
 };
 
-// --- No changes needed for updateProfile ---
 export const updateProfile = async (req, res, next) => {
     try {
         const { userId } = req;
@@ -298,7 +297,6 @@ export const updateProfile = async (req, res, next) => {
     }
 };
 
-// --- Corrected addProfileImage function ---
 export const addProfileImage = async (req, res, next) => {
     try {
         if (!req.file) {
@@ -308,11 +306,9 @@ export const addProfileImage = async (req, res, next) => {
         const uploadsDir = "uploads";
         const profilesDir = path.join(uploadsDir, "profiles");
 
-        // Ensure the directories exist
         if (!existsSync(uploadsDir)) mkdirSync(uploadsDir);
         if (!existsSync(profilesDir)) mkdirSync(profilesDir);
 
-        // FIXED: Added a path separator (/) and used path.join for safety
         let fileName = path.join("uploads", "profiles", date + req.file.originalname);
         renameSync(req.file.path, fileName);
 
@@ -331,7 +327,6 @@ export const addProfileImage = async (req, res, next) => {
     }
 };
 
-// --- Corrected removeProfileImage function ---
 export const removeProfileImage = async (req, res, next) => {
     try {
         const { userId } = req;
@@ -340,17 +335,31 @@ export const removeProfileImage = async (req, res, next) => {
             return res.status(404).send("User not found");
         }
 
-        // FIXED: The logic was reversed. This now correctly checks IF an image exists before trying to delete it.
         if (user.image) {
-            // Also check if the file physically exists before trying to delete
             if (existsSync(user.image)) {
                 unlinkSync(user.image);
             }
         }
 
-        user.image = null; // Use null instead of an empty string
+        user.image = null; 
         await user.save();
         return res.status(200).send("Profile image removed successfully");
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send("Internal server error");
+    }
+};
+
+
+export const logOut = async (req, res, next) => {
+    try {
+        res.cookie("jwt","", {
+            maxAge:1,
+            httpOnly: true,
+            secure: true,
+            sameSite: "None",
+        });
+        return res.status(200).send("LogOut Successfull.");
     } catch (err) {
         console.log(err);
         return res.status(500).send("Internal server error");
