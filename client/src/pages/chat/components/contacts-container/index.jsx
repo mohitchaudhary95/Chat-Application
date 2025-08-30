@@ -1,3 +1,4 @@
+import NewDM from "./components/newdm";
 import ProfileInfo from "./components/profileInfo";
 
 export const ContactsContainer = () => {
@@ -9,6 +10,7 @@ export const ContactsContainer = () => {
       <div className="my-5">
         <div className="flex items-center justify-center pr-10">
           <Title text="Direct Messages"/>
+          <NewDM/>
         </div>
       </div>
       <div className="my-5">

@@ -201,7 +201,7 @@ export const signup = async (req, res, next) => {
             maxAge: maxAge * 1000,
             httpOnly: true,
             secure: process.env.NODE_ENV !== 'development',
-            sameSite: "strict",
+            sameSite: "none",
         });
         return res.status(201).json({
             user: {
@@ -234,7 +234,7 @@ export const login = async (req, res, next) => {
             maxAge: maxAge * 1000,
             httpOnly: true,
             secure: process.env.NODE_ENV !== 'development',
-            sameSite: "strict",
+            sameSite: "none",
         });
         return res.status(200).json({
             user: {
@@ -278,7 +278,7 @@ export const updateProfile = async (req, res, next) => {
     try {
         const { userId } = req;
         const { firstName, lastName, color } = req.body;
-        if (!firstName || !lastName) {
+        if (!firstName || !lastName || color===undefined) {
             return res.status(400).send("All fields are required");
         }
         const userData = await User.findByIdAndUpdate(userId, { firstName, lastName, color, profileSetup: true }, { new: true, runValidators: true });
