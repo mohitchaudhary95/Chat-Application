@@ -3,32 +3,47 @@ import {GrAttachment} from "react-icons/gr"
 import {IoSend} from "react-icons/io5"
 import {RiEmojiStickerLine} from "react-icons/ri"
 import EmojiPicker from "emoji-picker-react"
+import { useAppStore } from "../../../../../../store"
+import { useSocket } from "../../../../../../context/SocketContext"
 
 export const MessageBar = () => {
 
   const emojiRef=useRef();
+  const socket=useSocket();
   const [emojiPickerOpen,SetEmojiPickerOpen]=useState(false);
-  const [message,setMessage]=useState();
+  const [message,setMessage]=useState('');
+  const {selectedChatType,selectedChatData,userInfo}=useAppStore();
 
-  useEffect(()=>{
-    function handleClickOutside(event){
-      if(emojiRef.current && !emojiRef.current.contains(event.target)){
-        SetEmojiPickerOpen(false)
+ useEffect(() => {
+    function handleClickOutside(event) {
+      if (emojiRef.current && !emojiRef.current.contains(event.target)) {
+        SetEmojiPickerOpen(false);
       }
     }
-    document.removeEventListener("mousedown",handleClickOutside);
-    return ()=>{
-      document.removeEventListener("mousedown",handleClickOutside)
+   document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [emojiRef]);
+
+  const handleAddEmoji = (emoji) => {
+    setMessage((msg) => msg + emoji.emoji);
+  };
+
+  const handleSendMessage = () => {
+    if (message.trim() === "") return; 
+
+    if (selectedChatType === 'contact' && socket) {
+      socket.emit("sendMessage", {
+        sender: userInfo.id,
+        recipient: selectedChatData._id,
+        content: message,
+        messageType: "text",
+        fileUrl: undefined,
+      });
+      setMessage(""); 
     }
-  },[emojiRef])
-
-  const handleAddEmoji=(emoji)=>{
-    setMessage((msg)=>msg+emoji.emoji)
-  }
-
-const handleSendMessage=()=>{
-
-  }
+  };
 
   return (
     <div className="h-[10vh] bg-[#1c1d25] gap-6 flex justify-center items-center px-8 mb-6 "><div className="flex-1 flex bg-[#2a2b33] rounded-md items-center gap-5 pr-5">
