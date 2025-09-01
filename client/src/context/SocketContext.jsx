@@ -38,7 +38,22 @@ export const SocketProvider = ({ children }) => {
         }
       };
 
+      const handleReceiveChannelMessage = (message) => {
+        const { selectedChatType, selectedChatData, addMessage } =
+          useAppStore.getState();
+
+        if (
+          selectedChatType !== "undefined" &&
+          selectedChatData &&
+          selectedChatData._id === message.channelId
+        ) {
+          console.log("channel message rcv");
+          addMessage(message);
+        }
+      };
+
       socket.current.on("recieveMessage", handleRecieveMessage);
+      socket.current.on("receive-channel-message", handleReceiveChannelMessage);
       return () => {
         socket.current.disconnect();
       };
